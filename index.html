@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(to right, #6dd5ed, #2193b0);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 800px;
+            height: 450px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .containerTextArea {
+            display: flex;
+            flex-grow: 1;
+            gap: 10px;
+        }
+
+        textarea {
+            flex-grow: 1;
+            font-size: 18px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            border-color: #2193b0;
+        }
+
+        .iconButton {
+            border: none;
+            background: #2193b0;
+            color: white;
+            font-size: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .iconButton:hover {
+            background: #6dd5ed;
+        }
+
+        .placeholder {
+            color: #888;
+        }
+
+        #toggle-lang {
+            margin-bottom: 20px;
+            font-size: 16px;
+            padding: 8px 16px;
+        }
+    </style>
+    <title>Auto Translate and Read</title>
+</head>
+<body>
+    <div class="container">
+        <h2 style="text-align: center; margin-bottom: 20px;">Traductor y Lector de Texto (Español ↔ Coreano)</h2>
+        <button id="toggle-lang" class="iconButton">Cambiar a Coreano</button>
+        <div class="containerTextArea">
+            <div>
+                <textarea class="fromText" placeholder="Habla aquí..."></textarea>
+                <div>
+                    <button class="listen iconButton"><i class="fas fa-microphone"></i></button>
+                </div>
+            </div>
+            <div>
+                <textarea class="toText" placeholder="Traducción..." readonly></textarea>
+                <div>
+                    <button class="read iconButton"><i class="fas fa-volume-up"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var SpeechRecognition = SpeechRecognition || webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        let currentLang = 'es-ES'; // Idioma inicial: español
+        recognition.lang = currentLang;
+
+        const fromText = document.querySelector('.fromText');
+        const toText = document.querySelector('.toText');
+        const listenButton = document.querySelector('.listen');
+        const readButton = document.querySelector('.read');
+        const toggleLangButton = document.getElementById('toggle-lang');
+
+        // Alternar entre español y coreano
+        toggleLangButton.addEventListener('click', () => {
+            currentLang = currentLang === 'es-ES' ? 'ko-KR' : 'es-ES';
+            recognition.lang = currentLang;
+            toggleLangButton.textContent = currentLang === 'es-ES' ? 'Cambiar a Coreano' : 'Cambiar a Español';
+            alert(`Idioma configurado en: ${currentLang === 'es-ES' ? 'Español' : 'Coreano'}`);
+        });
+
+        listenButton.addEventListener('click', () => {
+            recognition.start();
+        });
+
+        recognition.onresult = async (event) => {
+            const transcript = event.results[0][0].transcript;
+            fromText.value = transcript;
+
+            // Detectar el idioma del texto transcrito (español o coreano)
+            const isSpanish = /[áéíóúñ]/i.test(transcript);
+            const sourceLang = isSpanish ? 'es' : 'ko';  // Español o coreano
+            const targetLang = isSpanish ? 'ko' : 'es';  // Traducir al coreano o español
+
+            // Traducción automática usando la API de MyMemory
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${transcript}&langpair=${sourceLang}|${targetLang}`);
+            const data = await res.json();
+            toText.value = data.responseData.translatedText;
+
+            // Leer el texto traducido
+            readTranslatedText(targetLang);
+        };
+
+        // Función para leer el texto traducido
+        function readTranslatedText(lang) {
+            const utterance = new SpeechSynthesisUtterance(toText.value);
+            utterance.lang = lang === 'ko' ? 'ko-KR' : 'es-ES'; // Leer en coreano o español
+            utterance.rate = 0.9; // Ajustar la velocidad de lectura
+            speechSynthesis.speak(utterance);
+        }
+
+        // Botón para leer el texto traducido
+        readButton.addEventListener('click', () => {
+            if (!toText.value) return;
+            const isSpanish = /[áéíóúñ]/i.test(fromText.value);
+            const utterance = new SpeechSynthesisUtterance(toText.value);
+            utterance.lang = isSpanish ? 'ko-KR' : 'es-ES'; // Leer en el idioma opuesto
+            utterance.rate = 0.6;
+
+            speechSynthesis.speak(utterance);
+        });
+    </script>
+</body>
+</html>
